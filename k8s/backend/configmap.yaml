@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: user-system
+data:
+  DB_HOST: "postgres"
+  BACKEND_PORT: "8000"
