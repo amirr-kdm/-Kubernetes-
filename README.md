@@ -215,7 +215,7 @@ kubectl get pdb backend-pdb -n user-system
   single-node Kind cluster — a hard requirement would leave the second backend replica
   permanently unschedulable.
 
-## Future work (not implemented — see task instructions)
+## Future work 
 
 - **Redis + NetworkPolicy**: add a Redis Deployment/Service for caching, and
   `NetworkPolicy` resources restricting ingress so only `nginx` can reach `backend` on
