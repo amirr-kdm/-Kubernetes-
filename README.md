@@ -101,7 +101,7 @@ kind load docker-image backend:local --name devops-cluster
 **منابع:** درخواست: 100m CPU / 128Mi حافظه — حداکثر: 500m CPU / 512Mi حافظه
 
 ---
-
+</div>
 ### مرحله ۲ — بک‌اند (`k8s/backend/`)
 
 - **`configmap.yaml`** — مقادیر غیرحساس: `DB_HOST=postgres` و `BACKEND_PORT=8000`.
