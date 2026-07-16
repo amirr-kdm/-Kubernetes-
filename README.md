@@ -424,17 +424,3 @@ kubectl exec -n user-system postgres-0 -- pg_isready -U admin -d project_db
 kubectl get hpa backend-hpa -n user-system
 kubectl get pdb backend-pdb -n user-system
 ```
-
-<div dir="rtl">
-
----
-
-## فرضیات
-
-- مقادیر `POSTGRES_USER=admin`، `POSTGRES_PASSWORD=mysecretpassword` و `POSTGRES_DB=project_db` مستقیماً از فایل `last project/.env` گرفته شدن.
-- سورس اپ (`main.py`، `requirements.txt`، `Dockerfile`) به پوشه `k8s/app/` کپی شده تا پوشه `k8s/` به‌تنهایی و بدون وابستگی به مسیرهای بیرونی قابل build باشه.
-- حجم PVC برای `postgres` (`1Gi`) برای این اپ نمایشی کافیه.
-- Anti-Affinity از نوع `preferred` تعریف شده نه `required`، چون کلاستر Kind تک‌نود داره — اگر `required` بود، replica دوم هرگز schedule نمی‌شد.
-- مسیر `/health` در Nginx یک پاسخ استاتیک برمی‌گردونه (پروکسی به بک‌اند نیست) تا بررسی سلامت خود Nginx مستقل از وضعیت بک‌اند عمل کنه.
-
-</div>
