@@ -124,69 +124,69 @@ kind load docker-image backend:local --name devops-cluster
 
 ### نود کلاستر و اطلاعات کنترل پلین
 
-![cluster nodes](screenshots/01-cluster-nodes.jpg)
+![cluster nodes](k8s/screenshots/01-cluster-nodes.jpg)
 
 ---
 
 ### Namespace مربوطه (`user-system`)
 
-![namespace](screenshots/02-namespace.jpg)
+![namespace](k8s/screenshots/02-namespace.jpg)
 
 ---
 
 ### تمام پادها در حال اجرا — `1/1 Running`
 
-![pods running](screenshots/03-pods-running.jpg)
+![pods running](k8s/screenshots/03-pods-running.jpg)
 
 ---
 
 ### نمای کامل تمام منابع namespace
 
-![get all](screenshots/04-get-all.jpg)
+![get all](k8s/screenshots/04-get-all.jpg)
 
 ---
 
 ### Secret و ConfigMapها
 
-![secret configmap](screenshots/05-secret-configmap.jpg)
+![secret configmap](k8s/screenshots/05-secret-configmap.jpg)
 
 ---
 
 ### PVC بایند شده و تأیید اتصال دیتابیس
 
-![pvc db ready](screenshots/06-pvc-db-ready.jpg)
+![pvc db ready](k8s/screenshots/06-pvc-db-ready.jpg)
 
 ---
 
 ### تست سرویس بک‌اند از داخل کلاستر (بدون image خارجی)
 
-![backend internal](screenshots/07-backend-internal.jpg)
+![backend internal](k8s/screenshots/07-backend-internal.jpg)
 
 ---
 
 ### تست کامل API از بیرون — از طریق nginx (NodePort 30000)
 
-![e2e test 1](screenshots/08-app-e2e-test-1.jpg)
+![e2e test 1](k8s/screenshots/08-app-e2e-test-1.jpg)
 
-![e2e test 2](screenshots/08-app-e2e-test-2.jpg)
+![e2e test 2](k8s/screenshots/08-app-e2e-test-2.jpg)
 
 ---
 
 ### HPA و PDB
 
-![hpa pdb](screenshots/09-hpa-pdb.jpg)
+![hpa pdb](k8s/screenshots/09-hpa-pdb.jpg)
 
 ---
 
 ### لاگ‌های InitContainer — صبر برای آماده شدن دیتابیس
 
-![init container logs](screenshots/10-init-container-logs.jpg)
+![init container logs](k8s/screenshots/10-init-container-logs.jpg)
 
 ---
 
 ### تست ماندگاری دیتا — حذف پاد postgres و بازیابی خودکار
 
-![data persistence](screenshots/11-data-persistence.jpg)
+![data persistence](k8s/screenshots/11-data-persistence.jpg)
 
 ---
 
