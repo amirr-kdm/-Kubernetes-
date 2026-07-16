@@ -10,21 +10,7 @@
 
 </div>
 
-```
-اینترنت / هاست
-      │  localhost:30000  (Kind port mapping: 30000 → hostPort 30000)
-      ▼
-Service "nginx"      (NodePort 30000 → 80)
-      │  reverse proxy، upstream: backend:8000
-      ▼
-Service "backend"    (ClusterIP، پورت 8000)
-      │  DB_HOST=postgres، اتصال از طریق psycopg2
-      ▼
-Service "postgres"   (Headless / clusterIP: None، پورت 5432)
-      │
-      ▼
-StatefulSet "postgres"  (ذخیره‌سازی روی PVC)
-```
+![architecture](k8s/screenshots/architecture.jpg)
 
 <div dir="rtl">
 
