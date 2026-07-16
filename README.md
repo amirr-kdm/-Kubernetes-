@@ -60,7 +60,8 @@ k8s/
 │   ├── main.py
 │   └── requirements.txt
 ├── screenshots/             ← اسکرین‌شات‌های تأیید اجرا
-├── deploy.sh                ← اسکریپت کامل build → load → apply
+├── kind-config.yaml         ← تعریف کلاستر Kind و نگاشت پورت‌ها
+├── deploy.sh                ← اسکریپت کامل create-cluster → build → load → apply
 └── README.md
 ```
 
@@ -70,25 +71,31 @@ k8s/
 
 ## مرحله‌به‌مرحله پیاده‌سازی
 
-### مرحله ۰ — آماده‌سازی ایمیج بک‌اند برای Kind
+### مرحله ۱ — آماده‌سازی زیرساخت
 
-Kind به ایمیج‌های محلی Docker دسترسی مستقیم نداره. ایمیج باید ساخته بشه و داخل نود کلاستر لود بشه، وگرنه خطای `ImagePullBackOff` می‌گیریم.
+کلاستر محلی با Kind و نام `devops-cluster` ساخته می‌شه. فایل `k8s/kind-config.yaml` سه پورت رو از هاست به کانتینر نود Kind نگاشت می‌کنه: `30000` (NodePort خروجی Nginx)، و `80`/`443` (برای مراحل اختیاری بعدی مثل Ingress).
 
 </div>
 
 ```bash
 cd k8s
-docker build -t backend:local ./app
-kind load docker-image backend:local --name devops-cluster
+kind create cluster --config kind-config.yaml
+
+# تأیید آماده بودن کلاستر
+kubectl cluster-info
+kubectl get nodes
+
+# ساخت namespace اختصاصی پروژه (idempotent — همچنین در db/secret.yaml هم تعریف شده)
+kubectl create namespace user-system
 ```
 
 <div dir="rtl">
 
-در Deployment از `image: backend:local` با `imagePullPolicy: IfNotPresent` استفاده شده.
+بعد از این مرحله، `kubectl get nodes` باید یک نود کنترل‌پلین با وضعیت `Ready` نشون بده و `kubectl cluster-info` آدرس API server رو گزارش کنه.
 
 ---
 
-### مرحله ۱ — دیتابیس (`k8s/db/`)
+### مرحله ۲ — دیتابیس (`k8s/db/`)
 
 - **`secret.yaml`** — یک Secret با نام `postgres-secret` شامل مقادیر `admin`، `mysecretpassword` و `project_db` (همان مقادیر فایل `.env` پروژه قبلی). همچنین namespace `user-system` رو به‌صورت idempotent می‌سازه.
 - **`service.yaml`** — سرویس Headless با `clusterIP: None` و نام `postgres`، تا StatefulSet یک DNS پایدار داشته باشه.
@@ -101,8 +108,21 @@ kind load docker-image backend:local --name devops-cluster
 **منابع:** درخواست: 100m CPU / 128Mi حافظه — حداکثر: 500m CPU / 512Mi حافظه
 
 ---
+
+### مرحله ۳ — بک‌اند (`k8s/backend/`)
+
+**آماده‌سازی ایمیج:** Kind به ایمیج‌های محلی Docker دسترسی مستقیم نداره. ایمیج باید ساخته بشه و داخل نود کلاستر لود بشه، وگرنه خطای `ImagePullBackOff` می‌گیریم.
+
 </div>
-### مرحله ۲ — بک‌اند (`k8s/backend/`)
+
+```bash
+docker build -t backend:local ./app
+kind load docker-image backend:local --name devops-cluster
+```
+
+<div dir="rtl">
+
+در Deployment از `image: backend:local` با `imagePullPolicy: IfNotPresent` استفاده شده.
 
 - **`configmap.yaml`** — مقادیر غیرحساس: `DB_HOST=postgres` و `BACKEND_PORT=8000`.
 - **`deployment.yaml`** — ۲ replica، به همراه یک `initContainer` که قبل از شروع اپ، با `pg_isready -h postgres` منتظر می‌مونه تا دیتابیس آماده بشه (معادل Kubernetes برای `depends_on: service_healthy` در Compose). بررسی سلامت روی مسیر `/health` پیکربندی شده. همچنین `podAntiAffinity` از نوع `preferred` اضافه شده تا replicaها ترجیحاً روی نودهای مختلف پخش بشن.
@@ -112,7 +132,7 @@ kind load docker-image backend:local --name devops-cluster
 
 ---
 
-### مرحله ۳ — Nginx (`k8s/nginx/`)
+### مرحله ۴ — Nginx (`k8s/nginx/`)
 
 - **`configmap.yaml`** — فایل `nginx.conf` که از پروژه قبلی برای Kubernetes تطبیق داده شده؛ مقدار `proxy_pass` از `http://web:8000` به `http://backend:8000` تغییر کرده. یک مسیر مستقل `/health` هم برای بررسی سلامت خود nginx اضافه شده.
 - **`deployment.yaml`** — ConfigMap رو از طریق `subPath` روی `/etc/nginx/nginx.conf` سوار می‌کنه.
@@ -120,7 +140,7 @@ kind load docker-image backend:local --name devops-cluster
 
 ---
 
-### مرحله ۴ — قابلیت اطمینان
+### مرحله ۵ — قابلیت اطمینان
 
 سه مکانیزم پیاده شده:
 
@@ -334,7 +354,12 @@ docker restart devops-cluster-control-plane
 ```bash
 cd k8s
 
-# ۰. ساخت و لود ایمیج بک‌اند
+# ۱. ساخت کلاستر
+kind create cluster --config kind-config.yaml
+kubectl cluster-info
+kubectl get nodes
+
+# ساخت و لود ایمیج بک‌اند
 docker build -t backend:local ./app
 kind load docker-image backend:local --name devops-cluster
 
@@ -346,12 +371,12 @@ docker pull nginx:alpine
 docker save nginx:alpine | docker exec -i devops-cluster-control-plane \
   ctr --namespace=k8s.io images import -
 
-# ۱. دیتابیس
+# ۲. دیتابیس
 kubectl apply -f db/secret.yaml
 kubectl apply -f db/service.yaml
 kubectl apply -f db/statefulset.yaml
 
-# ۲. بک‌اند
+# ۳. بک‌اند
 kubectl apply -f backend/configmap.yaml
 kubectl apply -f backend/deployment.yaml
 kubectl apply -f backend/service.yaml
@@ -363,7 +388,7 @@ kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/late
 kubectl patch deployment metrics-server -n kube-system --type='json' \
   -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
 
-# ۳. Nginx
+# ۴. Nginx
 kubectl apply -f nginx/configmap.yaml
 kubectl apply -f nginx/deployment.yaml
 kubectl apply -f nginx/service.yaml
@@ -430,11 +455,11 @@ kubectl get pdb backend-pdb -n user-system
 
 ## کارهای آینده (پیاده نشده)
 
-- **Redis + NetworkPolicy (مرحله ۵):** اضافه کردن Redis برای caching و تعریف NetworkPolicy برای محدود کردن دسترسی‌ها: فقط Nginx بتونه به بک‌اند روی پورت 8000 وصل بشه، فقط بک‌اند بتونه به postgres روی 5432 و redis روی 6379 وصل بشه.
+- **Redis + NetworkPolicy (مرحله ۶):** اضافه کردن Redis برای caching و تعریف NetworkPolicy برای محدود کردن دسترسی‌ها: فقط Nginx بتونه به بک‌اند روی پورت 8000 وصل بشه، فقط بک‌اند بتونه به postgres روی 5432 و redis روی 6379 وصل بشه.
 
-- **Ingress + تنظیمات امنیتی (مرحله ۶):** جایگزین کردن NodePort با یک Ingress resource (نیاز به نصب ingress-nginx controller روی Kind) با TLS و هدرهای امنیتی.
+- **Ingress + تنظیمات امنیتی (مرحله ۷):** جایگزین کردن NodePort با یک Ingress resource (نیاز به نصب ingress-nginx controller روی Kind) با TLS و هدرهای امنیتی.
 
-- **Prometheus + Grafana با Helm (مرحله ۷):**
+- **Prometheus + Grafana با Helm (مرحله ۸):**
 
 </div>
 

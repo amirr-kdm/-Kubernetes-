@@ -27,7 +27,17 @@ ensure_image() {
   fi
 }
 
-echo "==> 0. Backend image"
+echo "==> Cluster"
+if ! kind get clusters 2>/dev/null | grep -qx "$CLUSTER"; then
+  echo "  [create] $CLUSTER (kind-config.yaml, ports 30000/80/443)"
+  kind create cluster --config kind-config.yaml
+else
+  echo "  [ok] $CLUSTER already exists"
+fi
+kubectl cluster-info
+kubectl get nodes
+
+echo "==> Backend image"
 docker build -t backend:local ./app
 kind load docker-image backend:local --name "$CLUSTER"
 
@@ -35,12 +45,12 @@ echo "==> Public images (postgres / nginx)"
 ensure_image postgres:15-alpine
 ensure_image nginx:alpine
 
-echo "==> 1. Database"
+echo "==> 2. Database"
 kubectl apply -f db/secret.yaml
 kubectl apply -f db/service.yaml
 kubectl apply -f db/statefulset.yaml
 
-echo "==> 2. Backend"
+echo "==> 3. Backend"
 kubectl apply -f backend/configmap.yaml
 kubectl apply -f backend/deployment.yaml
 kubectl apply -f backend/service.yaml
@@ -54,7 +64,7 @@ if ! kubectl get deployment metrics-server -n kube-system >/dev/null 2>&1; then
 fi
 kubectl apply -f backend/hpa.yaml
 
-echo "==> 3. Nginx"
+echo "==> 4. Nginx"
 kubectl apply -f nginx/configmap.yaml
 kubectl apply -f nginx/deployment.yaml
 kubectl apply -f nginx/service.yaml
