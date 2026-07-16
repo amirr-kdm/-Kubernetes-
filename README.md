@@ -97,11 +97,11 @@ kubectl create namespace user-system
 
 ### مرحله ۲ — دیتابیس (`k8s/db/`)
 
-- **`secret.yaml`** — یک Secret با نام `postgres-secret` شامل مقادیر `admin`، `mysecretpassword` و `project_db` (همان مقادیر فایل `.env` پروژه قبلی). همچنین namespace `user-system` رو به‌صورت idempotent می‌سازه.
+- **`secret.yaml`** — یک Secret با نام `postgres-secret` شامل مقادیر `admin`، `mysecretpassword` و `project_db` (همان مقادیر فایل `.env` پروژه قبلی). همچنین `namespace` به نام `user-system` رو می‌سازه (اجرای چندبارهٔ این فایل خطا نمی‌ده).
 - **`service.yaml`** — سرویس Headless با `clusterIP: None` و نام `postgres`، تا StatefulSet یک DNS پایدار داشته باشه.
 - **`statefulset.yaml`** — یک replica با ایمیج `postgres:15-alpine` و `volumeClaimTemplates` برای PVC اختصاصی.
 
-**⚠️ نکته مهم:** متغیر `PGDATA` روی `/var/lib/postgresql/data/pgdata` (یک **زیرپوشه**) تنظیم شده. بدون این تنظیم، Postgres با خطای `directory not empty` بالا نمی‌آد، چون ریشه PVC فولدر `lost+found` دارد.
+**نکته مهم:** متغیر `PGDATA` روی `/var/lib/postgresql/data/pgdata` (یک **زیرپوشه**) تنظیم شده. بدون این تنظیم، Postgres با خطای `directory not empty` بالا نمی‌آد، چون ریشه PVC فولدر `lost+found` دارد.
 
 **بررسی سلامت:** هر دو probe با دستور `pg_isready -U $POSTGRES_USER -d $POSTGRES_DB` پیاده شدن.
 
@@ -134,7 +134,7 @@ kind load docker-image backend:local --name devops-cluster
 
 ### مرحله ۴ — Nginx (`k8s/nginx/`)
 
-- **`configmap.yaml`** — فایل `nginx.conf` که از پروژه قبلی برای Kubernetes تطبیق داده شده؛ مقدار `proxy_pass` از `http://web:8000` به `http://backend:8000` تغییر کرده. یک مسیر مستقل `/health` هم برای بررسی سلامت خود nginx اضافه شده.
+- **`configmap.yaml`** — فایل `nginx.conf` که از پروژه قبلی برای Kubernetes تطبیق داده شده؛ مقدار `proxy_pass` از `http://web:8000` به `http://backend:8000` تغییر کرده. یک مسیر مستقل `/health` هم برای بررسی سلامت خود Nginx اضافه شده.
 - **`deployment.yaml`** — ConfigMap رو از طریق `subPath` روی `/etc/nginx/nginx.conf` سوار می‌کنه.
 - **`service.yaml`** — NodePort روی پورت `30000`، منطبق با port mapping کلاستر Kind.
 
@@ -166,7 +166,7 @@ kind load docker-image backend:local --name devops-cluster
 
 ---
 
-### Namespace ساخته‌شده (`user-system`)
+### `namespace` ساخته‌شده (`user-system`)
 
 </div>
 
@@ -196,7 +196,7 @@ kind load docker-image backend:local --name devops-cluster
 
 ---
 
-### Secret و ConfigMap ها
+### `Secret` و `ConfigMap`
 
 </div>
 
@@ -248,7 +248,7 @@ kind load docker-image backend:local --name devops-cluster
 
 ---
 
-### لاگ‌های InitContainer — انتظار برای آماده شدن دیتابیس
+### لاگ‌های `initContainer` — انتظار برای آماده شدن دیتابیس
 
 </div>
 
@@ -258,7 +258,7 @@ kind load docker-image backend:local --name devops-cluster
 
 ---
 
-### تست ماندگاری داده — حذف پاد postgres و بازیابی خودکار
+### تست ماندگاری داده — حذف پاد `postgres` و بازیابی خودکار
 
 </div>
 
@@ -291,7 +291,7 @@ kubectl exec -n user-system backend-788fffb76b-92sm5 -c backend -- \
 
 ---
 
-### ۲. خطای دانلود ایمیج‌های عمومی (postgres و nginx)
+### ۲. خطای دانلود ایمیج‌های عمومی (`postgres` و `nginx`)
 
 **مشکل:** نود Kind یک متغیر محیطی `HTTP_PROXY=http://127.0.0.1:10808` داشت که فقط در فضای شبکه هاست معتبره، نه داخل container نود. در نتیجه هر درخواست pull از Docker Hub با خطا مواجه می‌شد.
 
@@ -345,9 +345,9 @@ docker restart devops-cluster-control-plane
 
 ---
 
-## دستورات Build → Load → Apply
+## دستورات کامل استقرار (ساخت کلاستر → ساخت ایمیج → استقرار منابع)
 
-> **سریع‌ترین راه:** فقط اسکریپت `./deploy.sh` رو اجرا کن — همه مراحل زیر رو به‌صورت idempotent انجام می‌ده.
+> **سریع‌ترین راه:** فقط اسکریپت `./deploy.sh` رو اجرا کن — همه مراحل زیر رو انجام می‌ده و اجرای چندبارهٔ آن هم مشکلی ایجاد نمی‌کنه.
 
 </div>
 
@@ -446,30 +446,9 @@ kubectl get pdb backend-pdb -n user-system
 ## فرضیات
 
 - مقادیر `POSTGRES_USER=admin`، `POSTGRES_PASSWORD=mysecretpassword` و `POSTGRES_DB=project_db` مستقیماً از فایل `last project/.env` گرفته شدن.
-- سورس اپ (`main.py`، `requirements.txt`، `Dockerfile`) به پوشه `k8s/app/` کپی شده تا پوشه `k8s/` به‌تنهایی self-contained و قابل build باشه.
-- حجم PVC برای postgres (`1Gi`) برای این اپ demo کافیه.
+- سورس اپ (`main.py`، `requirements.txt`، `Dockerfile`) به پوشه `k8s/app/` کپی شده تا پوشه `k8s/` به‌تنهایی و بدون وابستگی به مسیرهای بیرونی قابل build باشه.
+- حجم PVC برای `postgres` (`1Gi`) برای این اپ نمایشی کافیه.
 - Anti-Affinity از نوع `preferred` تعریف شده نه `required`، چون کلاستر Kind تک‌نود داره — اگر `required` بود، replica دوم هرگز schedule نمی‌شد.
 - مسیر `/health` در Nginx یک پاسخ استاتیک برمی‌گردونه (پروکسی به بک‌اند نیست) تا بررسی سلامت خود Nginx مستقل از وضعیت بک‌اند عمل کنه.
-
----
-
-## کارهای آینده (پیاده نشده)
-
-- **Redis + NetworkPolicy (مرحله ۶):** اضافه کردن Redis برای caching و تعریف NetworkPolicy برای محدود کردن دسترسی‌ها: فقط Nginx بتونه به بک‌اند روی پورت 8000 وصل بشه، فقط بک‌اند بتونه به postgres روی 5432 و redis روی 6379 وصل بشه.
-
-- **Ingress + تنظیمات امنیتی (مرحله ۷):** جایگزین کردن NodePort با یک Ingress resource (نیاز به نصب ingress-nginx controller روی Kind) با TLS و هدرهای امنیتی.
-
-- **Prometheus + Grafana با Helm (مرحله ۸):**
-
-</div>
-
-```bash
-helm install kube-prom-stack prometheus-community/kube-prometheus-stack \
-  --namespace monitoring --create-namespace
-```
-
-<div dir="rtl">
-
-بعد از نصب، یک ServiceMonitor برای بک‌اند تعریف می‌شه وقتی که endpoint مربوط به `/metrics` فعال بشه.
 
 </div>
